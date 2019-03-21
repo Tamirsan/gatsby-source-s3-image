@@ -1,7 +1,9 @@
 import exif from 'exif-parser'
-import fs from 'fs'
 import _ from 'lodash'
 import { DateTime } from 'luxon'
+
+import fs from 'fs'
+
 import ExifDataType from './types/exif-data'
 import S3ImageAssetNode from './types/s3-image-asset-node'
 
@@ -10,9 +12,11 @@ const {
   GraphQLInt,
   GraphQLObjectType,
   GraphQLString,
+  // tslint:disable
 } = require('gatsby/graphql')
 
 export const resolveExifData = (image: S3ImageAssetNode): ExifDataType => {
+  console.log('resolve exif data', { image })
   const file = fs.readFileSync(image.absolutePath)
   const tags = exif.create(file).parse().tags
   const timestamp = tags.DateTimeOriginal * 1000
@@ -40,7 +44,7 @@ export interface ExtendNodeTypeOptions {
 
 export default ({ type }: ExtendNodeTypeOptions) => {
   if (type.name !== 'S3ImageAsset') {
-    return {}
+    return
   }
 
   return Promise.resolve({

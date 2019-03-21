@@ -1,18 +1,19 @@
-import AWS from 'aws-sdk'
+import AWS, { S3 } from 'aws-sdk'
 import _ from 'lodash'
-
-// tslint:disable eslint-disable-next-line
-const { createRemoteFileNode } = require('gatsby-source-filesystem')
+import fp from 'lodash/fp'
 
 // =================
 // AWS config setup.
 // =================
-const S3 = new AWS.S3({ apiVersion: '2006-03-01' })
+const S3Instance = new AWS.S3({ apiVersion: '2006-03-01' })
 
 // =========================
 // Plugin-specific constants.
 // =========================
 const S3SourceGatsbyNodeType = 'S3ImageAsset'
+
+// tslint:disable
+const { createRemoteFileNode } = require('gatsby-source-filesystem')
 
 // =================
 // Type definitions.
@@ -35,25 +36,26 @@ const constructS3UrlForAsset = ({
   protocol = 'https',
 }): string | null => {
   // Both `key` and either one of `bucketName` or `domain` are required.
+  // if (!_.some(key, _.every([bucketName, domain]))) {
   if (!key || (!bucketName && !domain)) {
     return null
   }
   // If `domain` is defined, that takes precedence over `bucketName.`
-  if (domain) {
-    return `${protocol}://${domain}/${key}`
-  }
-  if (bucketName) {
-    return `${protocol}://${bucketName}.s3.amazonaws.com/${key}`
-  }
-  return null
+  return domain
+    ? `${protocol}://${domain}/${key}`
+    : `${protocol}://${bucketName}.s3.amazonaws.com/${key}`
 }
 
-function isImage(entity): boolean {
+export const isImage = (entity): boolean => {
   // S3 API doesn't expose Content-Type, and we don't want to make unnecessary
   // HTTP requests for non-images... so we'll just infer based on the suffix
   // of the Key.
-  const extension = _.last(_.split(entity.Key, '.'))
-  return _.includes(['jpeg', 'jpg', 'png', 'webp', 'gif'], extension)
+  const extension = _.flow(
+    fp.get('Key'),
+    fp.split('.'),
+    fp.last
+  )(entity)
+  return _.includes(['gif', 'jpeg', 'jpg', 'png', 'webp'], extension)
 }
 
 export const sourceNodes = async (
@@ -62,13 +64,20 @@ export const sourceNodes = async (
 ): Promise<any> => {
   const { createNode } = actions
 
-  const listObjectsResponse = await S3.makeUnauthenticatedRequest(
-    'listObjectsV2',
+  const listObjectsResponse: S3.ListObjectsV2Output = await S3Instance.listObjectsV2(
+    // 'listObjectsV2',
     {
       Bucket: bucketName,
     }
   ).promise()
-  const s3Entities = _.get(listObjectsResponse, 'Contents')
+  const s3Entities: S3.ObjectList | undefined = _.get(
+    listObjectsResponse,
+    'Contents'
+  )
+  if (!s3Entities) {
+    console.trace('Returning early because bucket is empty.')
+    return
+  }
   // tslint:disable
   console.log({ s3Entities })
 
@@ -135,7 +144,7 @@ const createS3RemoteFileNode = async ({
   } catch (err) {
     // tslint:disable
     console.error('Unable to create file node.', err)
-    return null
+    return
   }
 }
 
