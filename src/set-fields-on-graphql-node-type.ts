@@ -1,6 +1,6 @@
-import exif from 'exif-parser'
-import _ from 'lodash'
 import { DateTime } from 'luxon'
+import _ from 'lodash'
+import exif from 'exif-parser'
 
 import fs from 'fs'
 
@@ -12,7 +12,6 @@ const {
   GraphQLInt,
   GraphQLObjectType,
   GraphQLString,
-  // tslint:disable
 } = require('gatsby/graphql')
 
 export const resolveExifData = (image: S3ImageAssetNode): ExifDataType => {
@@ -36,7 +35,7 @@ export const resolveExifData = (image: S3ImageAssetNode): ExifDataType => {
   }
 }
 
-export interface ExtendNodeTypeOptions {
+interface ExtendNodeTypeOptions {
   type: {
     name: string
   }
